@@ -91,9 +91,19 @@ func (model *RecsModel) finishSwipe(g *gocui.Gui, isRight bool) {
 		model.client.SwipeLeft(&user)
 	}
 	model.userIdx++
+	if model.userIdx >= len(model.recs) {
+		model.fetchUsers()
+	}
 	model.picIdx = 0
 	model.drawPhoto(g)
 	model.drawBio(g)
+}
+
+func (model *RecsModel) fetchUsers() {
+	recs, err := model.client.GetRecs()
+	if err == nil {
+		model.SetRecs(recs)
+	}
 }
 
 func (model *RecsModel) nextPic() func(g *gocui.Gui, v *gocui.View) error {
