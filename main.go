@@ -4,7 +4,7 @@ import (
     "fmt"
 )
 
-const fbToken = "EAAGm0PX4ZCpsBAK3ZClKKRYNfWBZBpoVcGpMbZBlEqZAMFNN3W13K1pkafEpQboslBhvFmsRGNyuS8EGGyDJRhJUVAyOZA7NLDuGFEAX3KTSnlhPnaqhWLuSFEZCKDOncHpimZAg7FIPZCZBZBLAZB8MZAZA6NB9fxD00dEbN2GZC8yyOQJuud5bqfJfDxeGZCVhsNWtqqjO8SAcUvIcz9rvTNHtuaPWWHolYQhXhdAMox6SdscR4SIlZBa9O65WZBNnb2XIxtTIZC0k4AshZAhVtFL9lORZBRRlwUYt8raBNnaAZD"
+const fbToken = "EAAGm0PX4ZCpsBAI5jZBpxDVp2FOID2c5u4gjZCOQ0CvF2aUlW0Eg4mXvlX4Vyx2k5J1XuqZCrFoWloNZBfuMQikStMEPU38wY7jKWpK8D8cgZBwE6Hf6b8qWe2DKb0vOKez7pZAQZBYZC3tRl3mXNJIQyvTiG4VncZCXSUJdwQuUSGRaarZB8rjZBpuKoBT7cSwlHwE9PR0rc59rEbiL6DpAGVFL0KKIrA0PIYVys9vZCfyCO1HfKNqZCgFWZA5gD5xPYLKAwhlWP1cQG9zZAPZB1RNMXmHA2sGJLIFWcvM4ZD"
 
 var fbId int64 = 113137066128069
 
@@ -16,7 +16,7 @@ func main() {
 	fmt.Println("Got client: ", client)
 	recs, err := client.GetRecs()
 	if err != nil { panic(err) }
-	model := NewRecsModel()
+	model := NewRecsModel(&client)
 	model.SetRecs(recs)
 	Run(model)
 }

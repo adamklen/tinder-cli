@@ -5,6 +5,8 @@ import (
 	"time"
 	"net/http"
 	"image/jpeg"
+	"strings"
+	"errors"
 
     "github.com/jroimartin/gocui"
     age "github.com/bearbin/go-age"
@@ -43,6 +45,55 @@ func scrollDown(g *gocui.Gui, v *gocui.View) error {
         v.SetOrigin(ox, oy+1)
     }
     return nil
+}
+
+const swipe = "asdfghjkl"
+
+func (model *RecsModel) partialSwipe(r rune) func(g *gocui.Gui, v *gocui.View) error  {
+	return func(g *gocui.Gui, v *gocui.View) error {
+		idx := strings.IndexRune(swipe, r)
+		if idx == -1 {
+			return errors.New("unexpected rune")
+		}
+		if model.lastSwipe.idx == -1 {
+			model.lastSwipe.idx = idx
+			model.lastSwipe.dir = 0
+			return nil
+		}
+		dir := idx - model.lastSwipe.idx
+		if dir == 0 {
+			return nil
+		}
+		model.lastSwipe.idx = idx
+		if model.lastSwipe.dir == 0 {
+			model.lastSwipe.dir = dir
+			return nil
+		}
+		if model.lastSwipe.dir < 0 && dir > 0 || model.lastSwipe.dir > 0 && dir < 0 {
+			// Reset
+			model.lastSwipe.dir = 0
+			model.lastSwipe.idx = -1
+			return nil
+		}
+		if idx > 0 && idx < len(swipe) - 1 {
+			return nil
+		}
+		model.finishSwipe(g, dir > 0)
+		return nil
+	}
+}
+
+func (model *RecsModel) finishSwipe(g *gocui.Gui, isRight bool) {
+	user := model.recs[model.userIdx]
+	if isRight {
+		model.client.SwipeRight(&user)
+	} else {
+		model.client.SwipeLeft(&user)
+	}
+	model.userIdx++
+	model.picIdx = 0
+	model.drawPhoto(g)
+	model.drawBio(g)
 }
 
 func (model *RecsModel) nextPic() func(g *gocui.Gui, v *gocui.View) error {
@@ -110,6 +161,11 @@ type RecsModel struct {
 	recs []Recommendation
 	userIdx int
 	picIdx int
+	lastSwipe struct {
+		idx int
+		dir int
+	}
+	client *TinderClient
 }
 
 func (model *RecsModel) SetRecs(recs []Recommendation) {
@@ -118,13 +174,17 @@ func (model *RecsModel) SetRecs(recs []Recommendation) {
 	model.picIdx = 0
 }
 
-func NewRecsModel() *RecsModel {
-	return &RecsModel{}
+func NewRecsModel(client *TinderClient) *RecsModel {
+	model := &RecsModel{}
+	model.lastSwipe.idx = -1
+	model.client = client
+	return model
 }
 
 func (model *RecsModel) drawPhoto(g *gocui.Gui) {
 	if v, err := g.View("pic"); err == nil {
 		v.Clear()
+		v.SetOrigin(0, 0)
 		// TODO print ascii image
 		user := model.recs[model.userIdx]
 		fmt.Fprintln(v, fmt.Sprintf("%d/%d", model.picIdx + 1, len(user.Photos)))
@@ -153,24 +213,11 @@ func (model *RecsModel) drawPhoto(g *gocui.Gui) {
 	}
 }
 
-func (model *RecsModel) Layout(g *gocui.Gui) error {
-    maxX, maxY := g.Size()
-	user := model.recs[model.userIdx]
-	const picHeight = 48
-    if v, err := g.SetView("pic", -1, -1, maxX, picHeight); err != nil {
-        if err != gocui.ErrUnknownView {
-            return err
-        }
-        v.Editable = false
-        v.Wrap = false
-		model.drawPhoto(g)
-    }
-    if v, err := g.SetView("bio", -1, picHeight, maxX, maxY); err != nil {
-        if err != gocui.ErrUnknownView {
-            return err
-        }
-        v.Editable = false
-        v.Wrap = true
+func (model *RecsModel) drawBio(g *gocui.Gui) {
+	if v, err := g.View("bio"); err == nil {
+		user := model.recs[model.userIdx]
+		v.Clear()
+		v.SetOrigin(0, 0)
 		birthDate, _ := time.Parse(time.RFC3339, user.BirthDate)
 		age := age.Age(birthDate)
 		fmt.Fprint(v, fmt.Sprintf("Id: %s\n", user.Id))
@@ -184,9 +231,30 @@ func (model *RecsModel) Layout(g *gocui.Gui) error {
 		fmt.Fprint(v, "]\n")
 		fmt.Fprint(v, fmt.Sprintf("%d miles away\n\n", user.DistanceMi))
 		fmt.Fprintln(v, user.Bio)
-        if _, err := g.SetCurrentView("bio"); err != nil {
+	}
+}
+
+func (model *RecsModel) Layout(g *gocui.Gui) error {
+    maxX, maxY := g.Size()
+	const picHeight = 48
+    if v, err := g.SetView("pic", -1, -1, maxX, picHeight); err != nil {
+        if err != gocui.ErrUnknownView {
             return err
         }
+        v.Editable = false
+        v.Wrap = false
+		model.drawPhoto(g)
+        if _, err := g.SetCurrentView("pic"); err != nil {
+            return err
+        }
+    }
+    if v, err := g.SetView("bio", -1, picHeight, maxX, maxY); err != nil {
+        if err != gocui.ErrUnknownView {
+            return err
+        }
+        v.Editable = false
+        v.Wrap = true
+		model.drawBio(g)
     }
     return nil
 }
@@ -210,12 +278,38 @@ func keybindings(g *gocui.Gui, model *RecsModel) error {
     if err := g.SetKeybinding("", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
         return err
     }
+    if err := g.SetKeybinding("", 'a', gocui.ModNone, model.partialSwipe('a')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 's', gocui.ModNone, model.partialSwipe('s')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'd', gocui.ModNone, model.partialSwipe('d')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'f', gocui.ModNone, model.partialSwipe('f')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'g', gocui.ModNone, model.partialSwipe('g')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'h', gocui.ModNone, model.partialSwipe('h')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'j', gocui.ModNone, model.partialSwipe('j')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'k', gocui.ModNone, model.partialSwipe('k')); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", 'l', gocui.ModNone, model.partialSwipe('l')); err != nil {
+        return err
+    }
     if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
         return err
     }
     return nil
 }
-
 
 func Run(recsModel *RecsModel) {
 	g, err := gocui.NewGui(gocui.OutputNormal)

@@ -86,3 +86,15 @@ func (tc *TinderClient) GetRecs() ([]Recommendation, error) {
 	return response.Results, nil
 }
 
+// SwipeRight swipes a user right.
+func (tc *TinderClient) SwipeRight(user *Recommendation) error {
+	_, err := tc.httpGet(fmt.Sprintf("%s/like/%s", apiRoot, user.Id))
+	return err
+}
+
+// SwipeLeft swipes a user right.
+func (tc *TinderClient) SwipeLeft(user *Recommendation) error {
+	_, err := tc.httpGet(fmt.Sprintf("%s/pass/%s", apiRoot, user.Id))
+	return err
+}
+
