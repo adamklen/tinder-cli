@@ -3,10 +3,23 @@ package main
 import (
     "fmt"
 	"time"
+	"net/http"
+	"image/jpeg"
 
     "github.com/jroimartin/gocui"
     age "github.com/bearbin/go-age"
+	"github.com/marc-gr/asciize"
+
 )
+
+func nextView(g *gocui.Gui, v *gocui.View) error {
+    if v == nil || v.Name() == "pic" {
+        _, err := g.SetCurrentView("bio")
+        return err
+    }
+    _, err := g.SetCurrentView("pic")
+    return err
+}
 
 func scrollUp(g *gocui.Gui, v *gocui.View) error {
     if v != nil {
@@ -115,20 +128,44 @@ func (model *RecsModel) drawPhoto(g *gocui.Gui) {
 		// TODO print ascii image
 		user := model.recs[model.userIdx]
 		fmt.Fprintln(v, fmt.Sprintf("%d/%d", model.picIdx + 1, len(user.Photos)))
-		fmt.Fprintln(v, user.Photos[model.picIdx].Url)
+		if len(user.Photos) == 0 {
+			fmt.Fprintln(v, "User has no photos!")
+			return
+		}
+		url := user.Photos[model.picIdx].Url
+		response, err := http.Get(url)
+		if err != nil {
+			fmt.Fprintln(v, err.Error())
+			return
+		}
+		defer response.Body.Close()
+		img, err := jpeg.Decode(response.Body)
+		if err != nil {
+			fmt.Fprintln(v, err.Error())
+		}
+		w, _ := v.Size()
+		a := asciize.NewAsciizer(asciize.Width(uint(w)))
+		s, err := a.Asciize(img)
+		if err != nil {
+			fmt.Fprintln(v, err.Error())
+		}
+		fmt.Fprintln(v, s)
 	}
 }
 
 func (model *RecsModel) Layout(g *gocui.Gui) error {
     maxX, maxY := g.Size()
 	user := model.recs[model.userIdx]
-    if _, err := g.SetView("pic", -1, -1, maxX, 32); err != nil {
+	const picHeight = 48
+    if v, err := g.SetView("pic", -1, -1, maxX, picHeight); err != nil {
         if err != gocui.ErrUnknownView {
             return err
         }
+        v.Editable = false
+        v.Wrap = false
 		model.drawPhoto(g)
     }
-    if v, err := g.SetView("bio", -1, 32, maxX, maxY); err != nil {
+    if v, err := g.SetView("bio", -1, picHeight, maxX, maxY); err != nil {
         if err != gocui.ErrUnknownView {
             return err
         }
@@ -168,6 +205,9 @@ func keybindings(g *gocui.Gui, model *RecsModel) error {
         return err
     }
     if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+        return err
+    }
+    if err := g.SetKeybinding("", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
         return err
     }
     if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {

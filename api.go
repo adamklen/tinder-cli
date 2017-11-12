@@ -26,6 +26,11 @@ type Recommendation struct {
 	Photos []struct {
 		Id string `json:"id"`
 		Url string `json:"url"`
+		ProcessedFiles []struct{
+			Height int `json:"height"`
+			Width int `json:"width"`
+			Url string `json:"url"`
+		} `json:"processedFiles"`
 	} `json:"photos"`
 }
 
