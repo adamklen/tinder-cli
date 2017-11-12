@@ -101,8 +101,8 @@ func (model *RecsModel) nextPic() func(g *gocui.Gui, v *gocui.View) error {
 		if v != nil {
 			if model.picIdx < len(model.recs[model.userIdx].Photos) - 1 {
 				model.picIdx++
+				model.drawPhoto(g)
 			}
-			model.drawPhoto(g)
 		}
 		return nil
 	}
@@ -113,8 +113,8 @@ func (model *RecsModel) prevPic() func(g *gocui.Gui, v *gocui.View) error {
 		if v != nil {
 			if model.picIdx > 0 {
 				model.picIdx--
+				model.drawPhoto(g)
 			}
-			model.drawPhoto(g)
 		}
 		return nil
 	}
