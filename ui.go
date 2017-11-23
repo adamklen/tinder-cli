@@ -1,55 +1,54 @@
 package main
 
 import (
-    "fmt"
-	"time"
-	"net/http"
-	"image/jpeg"
-	"strings"
 	"errors"
+	"fmt"
+	"image/jpeg"
+	"net/http"
+	"strings"
+	"time"
 
-    "github.com/jroimartin/gocui"
-    age "github.com/bearbin/go-age"
+	age "github.com/bearbin/go-age"
+	"github.com/jroimartin/gocui"
 	"github.com/marc-gr/asciize"
-
 )
 
 func nextView(g *gocui.Gui, v *gocui.View) error {
-    if v == nil || v.Name() == "pic" {
-        _, err := g.SetCurrentView("bio")
-        return err
-    }
-    _, err := g.SetCurrentView("pic")
-    return err
+	if v == nil || v.Name() == "pic" {
+		_, err := g.SetCurrentView("bio")
+		return err
+	}
+	_, err := g.SetCurrentView("pic")
+	return err
 }
 
 func scrollUp(g *gocui.Gui, v *gocui.View) error {
-    if v != nil {
-        ox, oy := v.Origin()
-        if oy <= 0 {
-            return nil;
-        }
-        v.SetOrigin(ox, oy-1)
-    }
-    return nil
+	if v != nil {
+		ox, oy := v.Origin()
+		if oy <= 0 {
+			return nil
+		}
+		v.SetOrigin(ox, oy-1)
+	}
+	return nil
 }
 
 func scrollDown(g *gocui.Gui, v *gocui.View) error {
-    if v != nil {
-        ox, oy := v.Origin()
-        _, h := v.Size();
-        // Disable infinite scrolling.
-        if _, err := v.Line(h); err != nil {
-            return nil
-        }
-        v.SetOrigin(ox, oy+1)
-    }
-    return nil
+	if v != nil {
+		ox, oy := v.Origin()
+		_, h := v.Size()
+		// Disable infinite scrolling.
+		if _, err := v.Line(h); err != nil {
+			return nil
+		}
+		v.SetOrigin(ox, oy+1)
+	}
+	return nil
 }
 
 const swipe = "asdfghjkl"
 
-func (model *RecsModel) partialSwipe(r rune) func(g *gocui.Gui, v *gocui.View) error  {
+func (model *RecsModel) partialSwipe(r rune) func(g *gocui.Gui, v *gocui.View) error {
 	return func(g *gocui.Gui, v *gocui.View) error {
 		idx := strings.IndexRune(swipe, r)
 		if idx == -1 {
@@ -75,7 +74,7 @@ func (model *RecsModel) partialSwipe(r rune) func(g *gocui.Gui, v *gocui.View) e
 			model.lastSwipe.idx = -1
 			return nil
 		}
-		if idx > 0 && idx < len(swipe) - 1 {
+		if idx > 0 && idx < len(swipe)-1 {
 			return nil
 		}
 		model.finishSwipe(g, dir > 0)
@@ -111,7 +110,7 @@ func (model *RecsModel) fetchUsers() {
 func (model *RecsModel) nextPic() func(g *gocui.Gui, v *gocui.View) error {
 	return func(g *gocui.Gui, v *gocui.View) error {
 		if v != nil && len(model.recs) > model.userIdx {
-			if model.picIdx < len(model.recs[model.userIdx].Photos) - 1 {
+			if model.picIdx < len(model.recs[model.userIdx].Photos)-1 {
 				model.picIdx++
 				model.drawPhoto(g)
 			}
@@ -132,16 +131,15 @@ func (model *RecsModel) prevPic() func(g *gocui.Gui, v *gocui.View) error {
 	}
 }
 
-
 func quit(g *gocui.Gui, v *gocui.View) error {
-    return gocui.ErrQuit
+	return gocui.ErrQuit
 }
 
 type RecsModel struct {
 	// State variables.
-	recs []Recommendation
-	userIdx int
-	picIdx int
+	recs      []Recommendation
+	userIdx   int
+	picIdx    int
 	lastSwipe struct {
 		idx int
 		dir int
@@ -170,7 +168,7 @@ func (model *RecsModel) drawPhoto(g *gocui.Gui) {
 			return
 		}
 		user := model.recs[model.userIdx]
-		fmt.Fprintln(v, fmt.Sprintf("%d/%d", model.picIdx + 1, len(user.Photos)))
+		fmt.Fprintln(v, fmt.Sprintf("%d/%d", model.picIdx+1, len(user.Photos)))
 		if len(user.Photos) == 0 {
 			fmt.Fprintln(v, "User has no photos!")
 			return
@@ -222,95 +220,94 @@ func (model *RecsModel) drawBio(g *gocui.Gui) {
 }
 
 func (model *RecsModel) Layout(g *gocui.Gui) error {
-    maxX, maxY := g.Size()
+	maxX, maxY := g.Size()
 	const picHeight = 48
-    if v, err := g.SetView("pic", -1, -1, maxX, picHeight); err != nil {
-        if err != gocui.ErrUnknownView {
-            return err
-        }
-        v.Editable = false
-        v.Wrap = false
+	if v, err := g.SetView("pic", -1, -1, maxX, picHeight); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Editable = false
+		v.Wrap = false
 		model.drawPhoto(g)
-        if _, err := g.SetCurrentView("pic"); err != nil {
-            return err
-        }
-    }
-    if v, err := g.SetView("bio", -1, picHeight, maxX, maxY); err != nil {
-        if err != gocui.ErrUnknownView {
-            return err
-        }
-        v.Editable = false
-        v.Wrap = true
+		if _, err := g.SetCurrentView("pic"); err != nil {
+			return err
+		}
+	}
+	if v, err := g.SetView("bio", -1, picHeight, maxX, maxY); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Editable = false
+		v.Wrap = true
 		model.drawBio(g)
-    }
-    return nil
+	}
+	return nil
 }
 
 func keybindings(g *gocui.Gui, model *RecsModel) error {
-    if err := g.SetKeybinding("", gocui.KeyArrowDown, gocui.ModNone, scrollDown); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone, scrollUp); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", gocui.KeyArrowRight, gocui.ModNone, model.nextPic()); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", gocui.KeyArrowLeft, gocui.ModNone, model.prevPic()); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'a', gocui.ModNone, model.partialSwipe('a')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 's', gocui.ModNone, model.partialSwipe('s')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'd', gocui.ModNone, model.partialSwipe('d')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'f', gocui.ModNone, model.partialSwipe('f')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'g', gocui.ModNone, model.partialSwipe('g')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'h', gocui.ModNone, model.partialSwipe('h')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'j', gocui.ModNone, model.partialSwipe('j')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'k', gocui.ModNone, model.partialSwipe('k')); err != nil {
-        return err
-    }
-    if err := g.SetKeybinding("", 'l', gocui.ModNone, model.partialSwipe('l')); err != nil {
-        return err
-    }
-    return nil
+	if err := g.SetKeybinding("", gocui.KeyArrowDown, gocui.ModNone, scrollDown); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone, scrollUp); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyArrowRight, gocui.ModNone, model.nextPic()); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyArrowLeft, gocui.ModNone, model.prevPic()); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'a', gocui.ModNone, model.partialSwipe('a')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 's', gocui.ModNone, model.partialSwipe('s')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'd', gocui.ModNone, model.partialSwipe('d')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'f', gocui.ModNone, model.partialSwipe('f')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'g', gocui.ModNone, model.partialSwipe('g')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'h', gocui.ModNone, model.partialSwipe('h')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'j', gocui.ModNone, model.partialSwipe('j')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'k', gocui.ModNone, model.partialSwipe('k')); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", 'l', gocui.ModNone, model.partialSwipe('l')); err != nil {
+		return err
+	}
+	return nil
 }
 
 func Run(recsModel *RecsModel) {
 	g, err := gocui.NewGui(gocui.OutputNormal)
-    if err != nil {
-        panic(err)
-    }
-    defer g.Close()
+	if err != nil {
+		panic(err)
+	}
+	defer g.Close()
 
-    g.Cursor = false
-    g.SetManager(recsModel)
+	g.Cursor = false
+	g.SetManager(recsModel)
 
 	if err := keybindings(g, recsModel); err != nil {
-        panic(err)
-    }
+		panic(err)
+	}
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-        panic(err)
-    }
+		panic(err)
+	}
 }
-

@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -11,25 +11,25 @@ import (
 var NoApiTokenError error = errors.New("error: client object has no api token")
 
 type TinderClient struct {
-	FbToken string	`json:"facebook_token"`
-	FbId int64		`json:"facebook_id"`
+	FbToken  string `json:"facebook_token"`
+	FbId     int64  `json:"facebook_id"`
 	apiToken string
 }
 
 type Recommendation struct {
-	Id string `json:"_id"`
-	Bio string `json:"bio"`
-	BirthDate string `json:"birth_date"`
-	DistanceMi int `json:"distance_mi"`
-	Gender int `json:"gender"`
-	Name string `json:"name"`
-	Photos []struct {
-		Id string `json:"id"`
-		Url string `json:"url"`
-		ProcessedFiles []struct{
-			Height int `json:"height"`
-			Width int `json:"width"`
-			Url string `json:"url"`
+	Id         string `json:"_id"`
+	Bio        string `json:"bio"`
+	BirthDate  string `json:"birth_date"`
+	DistanceMi int    `json:"distance_mi"`
+	Gender     int    `json:"gender"`
+	Name       string `json:"name"`
+	Photos     []struct {
+		Id             string `json:"id"`
+		Url            string `json:"url"`
+		ProcessedFiles []struct {
+			Height int    `json:"height"`
+			Width  int    `json:"width"`
+			Url    string `json:"url"`
 		} `json:"processedFiles"`
 	} `json:"photos"`
 }
@@ -43,7 +43,7 @@ func NewTinderClient(fbToken string, fbId int64) TinderClient {
 
 // Connect to Facebook to get a Tinder API key.
 func (tc *TinderClient) Connect() error {
-	buf := new (bytes.Buffer)
+	buf := new(bytes.Buffer)
 	json.NewEncoder(buf).Encode(*tc)
 	res, err := http.Post(fmt.Sprintf("%s/auth", apiRoot), "application/json", buf)
 	if err != nil {
@@ -51,7 +51,7 @@ func (tc *TinderClient) Connect() error {
 	}
 	var response struct {
 		User struct {
-			ApiToken string	`json:"api_token"`
+			ApiToken string `json:"api_token"`
 		} `json:"user"`
 	}
 	json.NewDecoder(res.Body).Decode(&response)
@@ -66,9 +66,13 @@ var httpClient http.Client = http.Client{}
 
 // Do an http get with auth headers.
 func (tc *TinderClient) httpGet(url string) (*http.Response, error) {
-	if tc.apiToken == "" { return nil, NoApiTokenError }
+	if tc.apiToken == "" {
+		return nil, NoApiTokenError
+	}
 	req, err := http.NewRequest("GET", url, nil)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Add("X-Auth-Token", tc.apiToken)
 	return httpClient.Do(req)
 }
@@ -97,4 +101,3 @@ func (tc *TinderClient) SwipeLeft(user *Recommendation) error {
 	_, err := tc.httpGet(fmt.Sprintf("%s/pass/%s", apiRoot, user.Id))
 	return err
 }
-
